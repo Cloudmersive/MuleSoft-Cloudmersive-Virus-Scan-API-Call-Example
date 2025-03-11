@@ -1,5 +1,7 @@
 # MuleSoft Cloudmersive Virus Scan API Call Example
 
+![image](https://github.com/user-attachments/assets/3b6e0bd9-0806-4304-b453-27cbd2f92770)
+
 In this example, a base-64 encoded input is taken in this format:
 
 ```
