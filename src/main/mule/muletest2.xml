@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+        http://www.mulesoft.org/schema/mule/http
+        http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/ee/core
+        http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/core
+        http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core
+        http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" basePath="/api">
+        <http:listener-connection host="0.0.0.0" port="8081"/>
+    </http:listener-config>
+
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration">
+        <http:request-connection protocol="HTTPS"
+                                 host="api.cloudmersive.com"
+                                 port="443"/>
+    </http:request-config>
+
+    <flow name="muletestFlow">
+        <http:listener doc:name="Listener"
+                       config-ref="HTTP_Listener_config"
+                       path="/test"
+                       allowedMethods="POST" />
+
+        <ee:transform doc:name="Build Multipart Payload">
+            <ee:message>
+                <ee:set-payload><![CDATA[
+                    %dw 2.0
+                    import fromBase64 from dw::core::Binaries
+                    output multipart/form-data
+                    ---
+                    {
+                      parts: {
+                        inputFile: {
+                          content: fromBase64(payload.encodedData),
+                          headers: {
+                            "Content-Type": "application/octet-stream",
+                            "Content-Disposition": "form-data; name=\"inputFile\"; filename=\"uploadedFile\""
+                          }
+                        }
+                      }
+                    }
+                ]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <logger level="INFO" message="Outgoing multipart payload: #[payload]" />
+
+        <!-- Only set 'Apikey'; let Mule's DW set the Content-Type (with boundary) -->
+        <ee:transform doc:name="Set Outbound Headers">
+            <ee:message>
+                <ee:set-attributes><![CDATA[
+                    %dw 2.0
+                    output application/java
+                    ---
+                    attributes ++ {
+                        headers: {
+                            "Apikey": "YOUR-API-KEY-HERE"
+                        }
+                    }
+                ]]></ee:set-attributes>
+            </ee:message>
+        </ee:transform>
+
+        <!-- Log what headers we are about to send -->
+        <logger level="INFO" doc:name="Log Outbound Headers"
+                message="Outbound headers: #[attributes.headers]" />
+
+        <http:request method="POST"
+                      path="/virus/scan/file/advanced"
+                      config-ref="HTTP_Request_configuration"
+                      doc:name="Call Cloudmersive">
+            <http:headers><![CDATA[#[attributes.headers]]]></http:headers>
+        </http:request>
+
+        <logger level="INFO" doc:name="Log Response"
+                message="Cloudmersive response: #[payload]" />
+    </flow>
+</mule>
