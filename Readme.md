@@ -8,7 +8,7 @@ In this example, a base-64 encoded input is taken in this format:
 }
 ```
 
-And this produces an output like this after calling the Cloudmersive API:
+This input is decoded and then sent to the Cloudmersive Advanced Virus Scanning API.  This produces an output like this after calling the Cloudmersive API:
 
 ```
 {
